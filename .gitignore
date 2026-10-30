@@ -1,0 +1,7 @@
+node_modules/
+functions/lib/
+*.log
+.firebase/
+.runtimeconfig.json
+functions/.secret.local
+functions/.env.local

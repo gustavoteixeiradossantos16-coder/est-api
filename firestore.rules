@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// Regras do StudyTimeIA.
+// Antes estavam abertas: qualquer pessoa sem login conseguia ler (e provavelmente alterar) os dados.
+// O app só lê o próprio perfil e altera foco + dias de estudo. Plano, minutos e contadores
+// são gravados apenas pelas Cloud Functions (Admin SDK, que não passa por estas regras).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedInAs(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validStudyPlan(data) {
+      return data.goal is string
+        && data.goal.size() > 0
+        && data.goal.size() <= 120
+        && data.studyDays is list
+        && data.studyDays.size() >= 1
+        && data.studyDays.hasOnly(['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'])
+        // Plano gratuito: no máximo 4 dias por semana
+        && (resource.data.plan == 'pro' || data.studyDays.size() <= 4);
+    }
+
+    match /users/{uid} {
+      allow read: if signedInAs(uid);
+
+      // Perfil inicial criado pelo app logo após o cadastro
+      allow create: if signedInAs(uid)
+        && request.resource.data.keys().hasOnly(['email', 'plan', 'goal', 'studyDays', 'studyDate', 'minutesToday'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.plan == 'free'
+        && request.resource.data.goal == null
+        && request.resource.data.studyDays == []
+        && request.resource.data.studyDate is string
+        && request.resource.data.minutesToday == 0;
+
+      // Onboarding: só foco e dias de estudo
+      allow update: if signedInAs(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['goal', 'studyDays'])
+        && validStudyPlan(request.resource.data);
+
+      allow delete: if false;
+    }
+
+    // Todo o resto fica fechado (inclui o caminho antigo artifacts/concursa-ia-local-app/...)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
