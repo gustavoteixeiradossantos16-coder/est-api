@@ -1,0 +1,9 @@
+# Nunca enviar para a Vercel (os segredos ficam nas Environment Variables)
+.env
+.env.*
+!.env.example
+service-account.json
+*-firebase-adminsdk-*.json
+.venv/
+__pycache__/
+.pytest_cache/
