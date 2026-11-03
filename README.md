@@ -7,6 +7,9 @@ Ele concentra tudo o que não pode ficar no navegador/celular:
 - **IA (Gemini)** — chat do Tutor, geração do plano de estudos e das questões. A chave fica só no servidor.
 - **Dados (Firestore)** — perfil, plano e progresso de cada pessoa, via Firebase Admin.
 - **Regras dos planos** — limite do Free (4 dias, 30 min/dia, até 4 anúncios de +15 min) e recursos do Premium.
+- **Tutor em texto puro** — o System Prompt exige respostas sem Markdown, conversa guiada (saudações e
+  perguntas gerais: 2–3 frases + opções numeradas) e explicação completa passo a passo para pedidos diretos.
+  Como rede de segurança, `texto_puro()` remove qualquer marcação que escape (asteriscos, #, crases, blocos de código).
 - **Login** — toda rota confere o token do Firebase Auth enviado pelo app ([est-web](https://github.com/gustavoteixeiradossantos16-coder/est-web)).
 
 Os dados continuam nos mesmos caminhos do site antigo (`artifacts/{APP_ID}/users/{uid}/...`),

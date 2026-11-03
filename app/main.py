@@ -33,7 +33,7 @@ from .auth import CurrentUser, get_current_user
 from .config import get_settings
 from .errors import AppError
 from .gemini import (SCHEMA_PLANO, SCHEMA_QUESTOES, AIService, get_ai, mensagem_de_estudo, prompt_plano,
-                     prompt_questoes)
+                     prompt_questoes, texto_puro)
 from .store import FirestoreStore, Store
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -260,8 +260,13 @@ def gerar_questoes(body: QuestoesIn, user: CurrentUser = Depends(get_current_use
         alts = [a for a in (q.get("alternativas") or []) if isinstance(a, dict) and a.get("texto")]
         correta = str(q.get("correta", "")).upper()
         if q.get("enunciado") and len(alts) >= 2 and any(str(a.get("letra", "")).upper() == correta for a in alts):
-            questoes.append({**q, "correta": correta,
-                             "alternativas": [{"letra": str(a["letra"]).upper(), "texto": a["texto"]} for a in alts]})
+            questoes.append({
+                **q,
+                "correta": correta,
+                "enunciado": texto_puro(str(q["enunciado"])),
+                "explicacao": texto_puro(str(q.get("explicacao") or "")),
+                "alternativas": [{"letra": str(a["letra"]).upper(), "texto": texto_puro(str(a["texto"]))} for a in alts],
+            })
     if not questoes:
         raise AppError(502, "PARSE", "A IA retornou uma resposta inválida. Tente novamente.")
     return {"questoes": questoes, "materia": body.materia}

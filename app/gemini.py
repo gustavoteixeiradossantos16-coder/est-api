@@ -20,9 +20,45 @@ from .rules import ANOS_ANALISE, DIAS_NOME, agora, limpar
 
 log = logging.getLogger(__name__)
 
-SYSTEM_INSTRUCTION = """Você é um tutor especialista de concursos públicos do Brasil (StudyTimeIA).
-Seja encorajador, direto, focado na banca organizadora (se informada) e use formatação limpa.
-Evite textos muito longos, ensine usando tópicos ou metodologias ativas."""
+SYSTEM_INSTRUCTION = """Você é o Tutor IA do StudyTimeIA, especialista em concursos públicos do Brasil.
+Seja encorajador, direto e focado na banca organizadora quando ela for informada.
+
+FORMATO (obrigatório em todas as respostas):
+- Responda SOMENTE em texto puro (plain text). NÃO use Markdown: nada de asteriscos, sublinhados,
+  cerquilhas (#), crases, blocos de código, tabelas, negrito ou itálico.
+- Organize o texto com parágrafos curtos e quebras de linha.
+- Para listas, comece cada linha com "1.", "2.", "3." ou com um hífen "-".
+
+COMO CONDUZIR A CONVERSA:
+1) Saudações, perguntas gerais ou pedidos vagos (ex.: "oi", "me ajuda a estudar", "o que você faz?"):
+   responda em no máximo 2 ou 3 frases e termine com de 3 a 5 opções numeradas e curtas para a pessoa
+   escolher o próximo passo (ex.: "1. Explicar um assunto do edital"). Se a pessoa responder só com
+   um número, siga a opção correspondente.
+2) Pedidos específicos e diretos (ex.: "me ensine a fazer cálculo de medicação", "explique a Lei 8.080",
+   "corrija esta questão"): NÃO mostre o menu de opções. Entregue imediatamente a explicação completa,
+   didática e passo a passo, com exemplos práticos e, quando fizer sentido, um exemplo resolvido e um
+   resumo final curto.
+3) Para praticar questões, apresente uma questão por vez e espere a resposta antes de corrigir."""
+
+
+def texto_puro(texto: str) -> str:
+    """Rede de segurança: remove marcação Markdown que escape da IA e normaliza as quebras de linha.
+
+    Mantém listas numeradas ("1.") e com hífen ("-"), que são texto puro legível.
+    """
+    t = (texto or "").replace("\r\n", "\n").replace("\r", "\n")
+    t = re.sub(r"```[\w+-]*[ \t]*\n?", "", t)  # cercas de bloco de código
+    t = re.sub(r"`([^`\n]*)`", r"\1", t)  # `código` em linha
+    t = re.sub(r"\*\*(.+?)\*\*", r"\1", t, flags=re.S)  # **negrito**
+    t = re.sub(r"__(.+?)__", r"\1", t, flags=re.S)  # __negrito__
+    t = re.sub(r"(?<![\w*])\*(?![\s*])([^*\n]+?)(?<![\s*])\*(?![\w*])", r"\1", t)  # *itálico* (não mexe em 2*3*4)
+    t = re.sub(r"^[ \t]{0,3}#{1,6}[ \t]+", "", t, flags=re.M)  # # títulos
+    t = re.sub(r"^([ \t]*)[*•+][ \t]+", r"\1- ", t, flags=re.M)  # marcadores * • + viram "-"
+    t = re.sub(r"^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$", "", t, flags=re.M)  # linhas horizontais ---
+    t = re.sub(r"^[ \t]*>[ \t]?", "", t, flags=re.M)  # > citações
+    t = re.sub(r"[ \t]+\n", "\n", t)  # espaços no fim da linha
+    t = re.sub(r"\n{3,}", "\n\n", t)  # no máximo uma linha em branco seguida
+    return t.strip()
 
 MAX_HISTORICO = 40
 MAX_TEXTO = 8000
@@ -193,7 +229,7 @@ class GeminiService:
         except genai_errors.APIError as e:
             log.warning("[Gemini chat] %s", e)
             raise _traduzir_erro(e) from e
-        resposta = resp.text or ""
+        resposta = texto_puro(resp.text or "")
         if not resposta:
             raise AppError(502, "IA_INDISPONIVEL", "A IA não retornou nenhuma resposta.")
         return {"resposta": resposta, "historico": contents + [{"role": "model", "parts": [{"text": resposta}]}]}
@@ -262,6 +298,6 @@ def get_ai() -> AIService:
 
 
 __all__ = [
-    "AIService", "GeminiService", "get_ai", "SCHEMA_PLANO", "SCHEMA_QUESTOES",
+    "AIService", "GeminiService", "get_ai", "texto_puro", "SYSTEM_INSTRUCTION", "SCHEMA_PLANO", "SCHEMA_QUESTOES",
     "prompt_plano", "prompt_questoes", "mensagem_de_estudo", "limpar_historico", "DIAS_NOME",
 ]
