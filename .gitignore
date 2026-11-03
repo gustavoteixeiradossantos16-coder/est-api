@@ -1,0 +1,16 @@
+# Segredos — NUNCA versionar
+.env
+service-account.json
+*-firebase-adminsdk-*.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Vercel
+.vercel
+
+.vercel
+.env*
